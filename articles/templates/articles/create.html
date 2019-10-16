@@ -3,9 +3,11 @@
 {% block title %}Article::Create{% endblock title %}
 
 {% block container %}
-<form>
-  <input type="text">
-  <textarea cols="30" rows="10"></textarea><br>
+<form method = "POST">
+  {% csrf_token %}
+  <a href=" {% url 'articles:index' %} ">[목록]</a>  
+{% comment %} 같을때 action 생략 쌉가능!!!!!!!!  {% endcomment %}
+  {{ form.as_p }}
   <button type="submit">생성하기</button>
 </form>
 {% endblock container %}

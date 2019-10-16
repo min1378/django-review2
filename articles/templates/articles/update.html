@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+
+{% block title %} Article::UPDATE{% endblock title %} 
+
+
+{% block container %}
+
+<form method="POST">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">[수정]</button>
+</form>
+
+
+
+{% endblock container %}
