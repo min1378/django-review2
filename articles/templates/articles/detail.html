@@ -8,10 +8,32 @@
   <p>  {{article.created_at}}  </p>
   <hr>
   <p> {{article.content}}  </p>
+
+
+  <h2>Comment</h2>
+  <form action=" {% url 'articles:comment_create' article.pk %}", method="POST">
+    {% csrf_token %}
+    {{ form.as_p}}
+    <button type="submit">댓글 작성</button>
+  </form>
+  {% for comment in comments %}
+    <div>
+      <li>{{ comment.content }}</li>
+      <form action="{% url 'articles:comment_delete' comment.pk article.pk%}", method="POST">
+      <button type="submit">삭제하기</button>
+      {% empty %}
+        <p>아직 댓글이 없습니다.. 달아주세욤</p> 
+    </div>
+    <br>
+  
+  
+  {% endfor %}
+  <hr>
+
   <a href=" {% url 'articles:update' article.pk %} ">[수정하기]</a>
 
-  <form action=" {% url 'articles:delete' article.pk %}" method="POST">
+  <form action=" {% url 'articles:delete' article.pk %}", method="POST">
     {% csrf_token %}
   <button type="submit">[삭제하기]</button>
-  </form>
+
 {% endblock container %}

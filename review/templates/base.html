@@ -9,6 +9,11 @@
 <body>
   <header>
     <b>저희 페이지에 오신걸 환영합니다.</b>
+    <br>
+    <span> hello, {{ user.username }}</span>
+    <a href="{% url 'accounts:logout' %}">[로그아웃]</a>
+    <br>
+    <a href="{% url 'articles:index' %}">[목록]</a>
   </header>
   {% block container %}{% endblock container %}
 </body>

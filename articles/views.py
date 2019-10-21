@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import ArticleForm
-from .models import Article
+from .forms import ArticleForm, CommentForm
+from .models import Article, Comment
 from IPython import embed
 from django.views.decorators.http import require_GET, require_POST
 # Create your views here.
@@ -37,8 +37,13 @@ def create(request):
 def detail(request, article_pk):
     #사용자가 적어보낸 article_pk를 통해 세부 페이지를 보여준다.
     article = get_object_or_404(Article, pk=article_pk)
+    comments = article.comments.all()
+    form = CommentForm()
     context = {
         'article' : article,
+        'comments' : comments,
+        'form' : form,
+
     }
     return render(request, 'articles/detail.html', context)
 
@@ -71,3 +76,20 @@ def delete(request, article_pk):
     article = get_object_or_404(Article, pk=article_pk)
     article.delete()    
     return redirect('articles:index')
+
+@require_POST
+def comment_create(request, article_pk):
+    article = get_object_or_404(Article, pk=article_pk)
+    form = CommentForm(request.POST)
+    if form.is_valid():
+        comment = form.save(commit=False)  # push 전의 상태를 담아둠
+        comment.article = article  # 빠진 필드 채워넣기
+        comment.save()
+    return redirect('articles:detail', article_pk)
+    # article_pk에 해당하는 article에 새로운 comment 생성
+    # 생성한 다음 article detail page 로 redirect
+
+def comment_delete(request, comment_pk, article_pk):
+    comment = get_object_or_404(Comment, pk=comment_pk)
+    comment.delete()
+    return redirect('articles:detail', article_pk)
