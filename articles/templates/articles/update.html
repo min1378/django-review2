@@ -1,17 +1,11 @@
 {% extends 'base.html' %}
 
+{% block title %}Article::Update{% endblock title %}
 
-{% block title %} Article::UPDATE{% endblock title %} 
-
-
-{% block container %}
-
+{% block body %}
 <form method="POST">
   {% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">[수정]</button>
+  <button type="submit">수정하기</button>
 </form>
-
-
-
-{% endblock container %}
+{% endblock body %}

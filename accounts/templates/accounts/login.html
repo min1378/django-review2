@@ -2,18 +2,11 @@
 
 {% block title %}Accounts::로그인{% endblock title %}
 
-
-{% block container %}
-
-
+{% block body %}
 <h2>로그인</h2>
-<form method="POST">
+<form method="post">
   {% csrf_token %}
   {{ form.as_p }}
   <button type="submit">로그인</button>
-
-
 </form>
-
-
-{% endblock container %}
+{% endblock body %}

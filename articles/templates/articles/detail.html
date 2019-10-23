@@ -1,39 +1,55 @@
 {% extends 'base.html' %}
 
+{% block title %}Article::Detail{% endblock title %}
 
-{% block title %} Article::Detail {% endblock title %}
-{% block container %}
-  <a href=" {% url 'articles:index' %} ">[목록]</a>
-  <h2> {{ article.title }}</h2>
-  <p>  {{article.created_at}}  </p>
-  <hr>
-  <p> {{article.content}}  </p>
-
-
-  <h2>Comment</h2>
-  <form action=" {% url 'articles:comment_create' article.pk %}", method="POST">
+{% block body %}
+<form action="{% url 'articles:delete' article.pk %}" method="POST">
+  {% csrf_token %}
+{% if article.user == request.user %}
+  <a href="{% url 'articles:update' article.pk %}">[수정하기]</a><button type="submit">삭제하기</button>
+{% endif %}
+<h2>{{ article.title }}</h2>
+<p>{{ article.created_at }}</p>
+<br>
+<p>{{ request.user }} </p>
+  <a href="{% url 'articles:like' article.pk %}">
+    {% if request.user in article.liked_users.all %}
+    <i class="fas fa-heart fa-lg" style = "color: red"></i>
+    {% else %}
+    <i class="far fa-heart fa-lg" style = "color: red"></i>
+    {% endif %}
+  </a>
+<span>{{ article.liked_users.all | length}}명이 이 글을 좋아합니다.</span>
+<p> {{ article.content }} </p>
+</form>
+<hr>
+{% if user.is_authenticated %}
+<form action="{% url 'articles:comment_create' article.pk %}" method="POST">
+  {% csrf_token %}
+  {{form.as_p}}
+  <button type="submit">댓글작성</button>
+</form>
+{% else %}
+<a href="{% url 'accounts:login' %}">댓글을 작성하시려면 로그인 해주세요.</a>
+{% endif %}
+{% for comment in comments %}
+<p>{{ comment.user }} : {{ comment.content }}</p>
+{% if user.is_authenticated %}
+  {% if comment.user == request.user %}
+  <form action="{% url 'articles:comment_delete' article.pk comment.pk %}" method="POST">
     {% csrf_token %}
-    {{ form.as_p}}
-    <button type="submit">댓글 작성</button>
+    <button class='btn btn-link' type="submit">삭제하기</button>
   </form>
-  {% for comment in comments %}
-    <div>
-      <li>{{ comment.content }}</li>
-      <form action="{% url 'articles:comment_delete' comment.pk article.pk%}", method="POST">
-      <button type="submit">삭제하기</button>
-      {% empty %}
-        <p>아직 댓글이 없습니다.. 달아주세욤</p> 
-    </div>
-    <br>
-  
-  
-  {% endfor %}
-  <hr>
+  {% endif %}
+{% endif %}
+{% empty %}
+<h5>아직 댓글이 없습니다.</h5>
+{% endfor %}
 
-  <a href=" {% url 'articles:update' article.pk %} ">[수정하기]</a>
 
-  <form action=" {% url 'articles:delete' article.pk %}", method="POST">
-    {% csrf_token %}
-  <button type="submit">[삭제하기]</button>
+{% include 'articles/_follow.html' %}
 
-{% endblock container %}
+
+
+
+{% endblock body %}

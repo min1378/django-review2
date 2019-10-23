@@ -1,95 +1,135 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from .forms import ArticleForm, CommentForm
 from .models import Article, Comment
-from IPython import embed
-from django.views.decorators.http import require_GET, require_POST
-# Create your views here.
 
+
+@require_GET
 def index(request):
     articles = Article.objects.all()
-    context = {
-        'articles' : articles,
-    }
-
+    context = {'articles': articles}
     return render(request, 'articles/index.html', context)
 
 
-
-
-
-def create(request):
-    if request.method == 'POST':
-        #Article을 생성해달라고 하는 요청
-        form = ArticleForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('articles:index')
-    else: #GET
-        # Article을 생성하기 위한 페이지를 달라고 하는 요청
-        form = ArticleForm()
-    context = {
-        'form':form,
-    }
-    return render(request, 'articles/create.html', context)
-
-
-
+@require_GET
 def detail(request, article_pk):
-    #사용자가 적어보낸 article_pk를 통해 세부 페이지를 보여준다.
+    # 사용자가 url 에 적어보낸 article_pk 를 통해 디테일 페이지를 보여준다.
     article = get_object_or_404(Article, pk=article_pk)
-    comments = article.comments.all()
     form = CommentForm()
+    comments = article.comments.all()
     context = {
-        'article' : article,
-        'comments' : comments,
-        'form' : form,
-
-    }
+        'article': article,
+        'comments': comments,
+        'form': form,
+        }
     return render(request, 'articles/detail.html', context)
 
 
-
-
-
-def update(request,article_pk):
-    article = get_object_or_404(Article, pk=article_pk)
+@login_required 
+# 로그인 안 되어있으면 /accounts/login/ 보내줌, 로그인 url 을 다르게 설정했다면 @login_required(login_url='users/login/')
+# 로그인 안된 상태로 url 통해서 create 접속할 경우 http://127.0.0.1:8000/accounts/login/?next=/articles/create/ 경로로 login 화면을 보여주는데 ?next는 로그인 한 이후에 create 화면으로 보내주라는 뜻
+def create(request):
     if request.method == 'POST':
-        form = ArticleForm(request.POST, instance=article)
+        # Article 을 생성해달라고 하는 요청
+        form = ArticleForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
-            return redirect('articles:detail', article_pk)
-        
-    if request.method == 'GET':
-        form = ArticleForm(instance=article)
-    context = {
-        'form':form,
-    }
+            article = form.save(commit=False)
+            article.user = request.user
+            article.save()
+            return redirect('articles:detail', article.pk)
+    else:
+        # Article 을 생성하기 위한 페이지를 달라고 하는 요청
+        form = ArticleForm()
+        context = {'form': form}  # 비어있는 폼을 보내서 사용자가 html에서 볼 수 있도록 함
+        return render(request, 'articles/create.html', context)
+
+@login_required
+def update(request, article_pk):
+    article = get_object_or_404(Article, pk=article_pk)
+    if article.user == request.user:
+        if request.method == 'POST':
+            form = ArticleForm(request.POST, instance=article)
+            if form.is_valid():
+                form.save()
+                return redirect('articles:detail', article_pk)
+        else:
+            form = ArticleForm(instance=article)
+    else:
+        return redirect('articles:index', article_pk)
+    context = {'form': form}
     return render(request, 'articles/update.html', context)
-    
 
 
 @require_POST
 def delete(request, article_pk):
-    # article_pk에 맞는 article을 꺼낸다.
-    # 삭제한다.
-    #if request.method == 'POST':
-    article = get_object_or_404(Article, pk=article_pk)
-    article.delete()    
+    if request.user.is_authenticated:
+        # article_pk 에 맞는 article 을 가져온다. 삭제한다.
+        article = get_object_or_404(Article, pk=article_pk)
+        if article.user == request.user:
+            article.delete()
+        else:
+            return redirect('articles:detail', article_pk)
     return redirect('articles:index')
+
+
 
 @require_POST
 def comment_create(request, article_pk):
-    article = get_object_or_404(Article, pk=article_pk)
-    form = CommentForm(request.POST)
-    if form.is_valid():
-        comment = form.save(commit=False)  # push 전의 상태를 담아둠
-        comment.article = article  # 빠진 필드 채워넣기
-        comment.save()
-    return redirect('articles:detail', article_pk)
-    # article_pk에 해당하는 article에 새로운 comment 생성
-    # 생성한 다음 article detail page 로 redirect
+    if request.user.is_authenticated:
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)  # push 전의 상태를 담아둠
+            comment.article_id = article_pk  # 빠진 필드 채워넣기
+            comment.user = request.user
+            comment.save()
 
-def comment_delete(request, comment_pk, article_pk):
+        # comment = Comment(article_id = article_pk)
+        # form = CommentForm(request.POST, instance=comment)
+        # if form.is_valid():
+        #     form.save()
+    return redirect('articles:detail', article_pk)
+
+
+@require_POST
+def comment_delete(request, article_pk, comment_pk):
     comment = get_object_or_404(Comment, pk=comment_pk)
-    comment.delete()
+    if comment.user == request.user:
+        if request.user.is_authenticated:
+            article = get_object_or_404(Article, pk=article_pk)
+            comment = article.comments.get(pk=comment_pk)
+            # comment = get_object_or_404(Comment, pk=comment_pk)
+            comment.delete()
+            return redirect('articles:detail', article_pk)
+        return HttpResponse('You are Unauthorized', status=401)
+    else:
+        return redirect('articles:detail', article_pk)
+
+
+
+def like(request, article_pk):
+    user = request.user
+    article = get_object_or_404(Article, pk=article_pk)
+
+    if article.liked_users.filter(pk=user.pk).exists():
+        user.liked_articles.remove(article)
+    else:
+        user.liked_articles.add(article)
+    return redirect('articles:detail', article_pk)
+
+
+
+def follow(request, user_pk, article_pk):
+    # 로그인한 유저가 게시글 유저를 FOLLW or UNFOLLOW 한다.
+    user = request.user
+    person = get_object_or_404(get_user_model(), pk=user_pk) # 게시글 주인
+
+    if user in person.followers.all(): # 이미 팔로우라면
+        person.followers.remove(user) # 언팔
+    
+    else:
+        person.followers.add(user) # 팔로우하겠다.
+    
     return redirect('articles:detail', article_pk)
